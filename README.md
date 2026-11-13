@@ -28,7 +28,7 @@
 - **视图状态全在 URL 里**：`?cat=nav&tag=Linear&q=侧边栏`，分享链接即可还原同一屏
 - **零 UI 框架**：手写 CSS + CSS 变量，没有引入 Tailwind 或组件库，方便整套换肤
 - **零后端**：`nuxt generate` 出纯静态文件（`index.html` / `guide/` / `filter/` / `catalog.json`），任意静态托管、CDN 或对象存储都能直接跑，不需要 Node、数据库或服务端进程
-- **自带访问统计**：轻量埋点（`/collect.gif` + nginx 日志 + 定时汇总），`/stats` 看板能看到今日 PV/UV、最近 14 天趋势、热门分类、被复制最多的组件、搜索词与风格标签偏好；不接第三方统计、不用 Cookie
+- **自带访问统计**：轻量埋点（`/collect.gif` + nginx 日志 + 定时汇总），`/stats` 看板能看到今日 PV/UV、最近 14 天趋势、热门分类、被浏览/被复制最多的变体、搜索词与风格标签偏好；不接第三方统计、不用 Cookie
 
 ## 技术栈
 

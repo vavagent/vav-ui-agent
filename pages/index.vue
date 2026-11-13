@@ -59,6 +59,38 @@ const comps = computed(() => {
 })
 const pending = ref(false)
 
+/* 曝光埋点：卡片进入视口（顶部进入 85% 高度内）时记一次 view，同一变体每页只记一次 */
+onMounted(() => {
+  const seen = new Set()
+  let ticking = false
+
+  const scan = () => {
+    const vh = window.innerHeight
+    for (const el of document.querySelectorAll('.variant[data-vkey]')) {
+      const key = el.dataset.vkey
+      if (!key || seen.has(key)) continue
+      const rect = el.getBoundingClientRect()
+      if (rect.top < vh * 0.85 && rect.bottom > 0) {
+        seen.add(key)
+        track('view', { cat: el.dataset.cat, name: el.dataset.name })
+      }
+    }
+  }
+
+  const onScroll = () => {
+    if (ticking) return
+    ticking = true
+    requestAnimationFrame(() => {
+      ticking = false
+      scan()
+    })
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true })
+  nextTick(scan)
+  watch(comps, () => nextTick(scan))
+})
+
 /* 当前分类的元信息 */
 const currentCatMeta = computed(() => {
   for (const grp of Object.values(catGroups.value || {})) {
@@ -189,7 +221,7 @@ async function copy(c, ev) {
         <div v-if="pending" class="empty">加载中…</div>
         <div v-else-if="!comps || comps.length === 0" class="empty">这一类还在整理中，下一轮补上。</div>
 
-        <div v-for="c in comps" :key="c.id" class="variant">
+        <div v-for="c in comps" :key="c.id" class="variant" :data-vkey="c.category_slug + '|' + c.name" :data-cat="c.category_slug" :data-name="c.name">
           <div class="variant-head">
             <h3>{{ c.name }}</h3>
             <div class="meta">

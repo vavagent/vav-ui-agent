@@ -26,12 +26,13 @@ CST = timezone(timedelta(hours=8))
 
 
 def blank_day() -> dict:
-    return {"pv": 0, "ips": [], "cats": {}, "copies": {}, "searches": {}, "tags": {}, "paths": {}}
+    return {"pv": 0, "ips": [], "cats": {}, "copies": {}, "views": {}, "searches": {}, "tags": {}, "paths": {}}
 
 
 def bump(d: dict, key: str, name: str, n: int = 1) -> None:
     if not name:
         return
+    d.setdefault(key, {})
     d[key][name] = d[key].get(name, 0) + n
 
 
@@ -76,6 +77,8 @@ def main() -> None:
                     bump(d, "cats", cat)
                 elif ev == "copy":
                     bump(d, "copies", name)
+                elif ev == "view":
+                    bump(d, "views", name)
                 elif ev == "tag":
                     bump(d, "tags", name)
                 elif ev == "search":

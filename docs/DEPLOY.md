@@ -167,6 +167,7 @@ ssh root@47.104.100.227 "mkdir -p /clouddream/nginx-proxy-manage/data/static/ui/
 | `cat` | 左侧切分类 | cat |
 | `tag` | 点风格标签 / 风格弹窗选择 | name=标签 |
 | `search` | 搜索框输入停止 800ms 后 | q |
+| `view` | 卡片进入视口（滚动扫描，每个变体每页只记一次） | cat、name=变体名 |
 | `copy` | 点「复制」提示词 | cat、name=变体名 |
 
 隐私：日志里只保留原始 IP 用于当天 UV 去重，汇总时立刻替换成 `sha1(日期|IP)` 前 12 位，原始 IP 随日志清空丢弃；不使用 Cookie、不接第三方统计。

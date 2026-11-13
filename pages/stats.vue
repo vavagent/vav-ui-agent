@@ -59,6 +59,7 @@ function dateBefore(n) {
 
 const topCatsToday = computed(() => (today.value ? Object.entries(today.value.cats).sort((a, b) => b[1] - a[1]).slice(0, 10) : []))
 const topCopies7 = computed(() => sum('copies', dateBefore(6)).slice(0, 10))
+const topViews7 = computed(() => sum('views', dateBefore(6)).slice(0, 10))
 const topSearch7 = computed(() => sum('searches', dateBefore(6)).slice(0, 10))
 const topTags7 = computed(() => sum('tags', dateBefore(6)).slice(0, 14))
 </script>
@@ -122,6 +123,18 @@ const topTags7 = computed(() => sum('tags', dateBefore(6)).slice(0, 14))
         </section>
 
         <section class="panel">
+          <h2>最常浏览的变体（近 7 天）</h2>
+          <div v-if="!topViews7.length" class="hint">还没有数据</div>
+          <ul v-else class="rank">
+            <li v-for="([name, n], i) in topViews7" :key="name">
+              <span class="idx">{{ i + 1 }}</span>
+              <span class="name">{{ name }}</span>
+              <span class="count">{{ n }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="panel">
           <h2>最常复制的组件（近 7 天）</h2>
           <div v-if="!topCopies7.length" class="hint">还没有数据</div>
           <ul v-else class="rank">
@@ -132,15 +145,15 @@ const topTags7 = computed(() => sum('tags', dateBefore(6)).slice(0, 14))
             </li>
           </ul>
         </section>
-      </div>
 
-      <section class="panel">
-        <h2>搜索词（近 7 天）</h2>
-        <div v-if="!topSearch7.length" class="hint">还没有数据</div>
-        <div v-else class="tags">
-          <span v-for="([q, n]) in topSearch7" :key="q" class="tag">{{ q }} <em>{{ n }}</em></span>
-        </div>
-      </section>
+        <section class="panel">
+          <h2>搜索词（近 7 天）</h2>
+          <div v-if="!topSearch7.length" class="hint">还没有数据</div>
+          <div v-else class="tags">
+            <span v-for="([q, n]) in topSearch7" :key="q" class="tag">{{ q }} <em>{{ n }}</em></span>
+          </div>
+        </section>
+      </div>
 
       <section class="panel">
         <h2>风格标签筛选（近 7 天）</h2>
