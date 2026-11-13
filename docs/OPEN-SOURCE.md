@@ -9,8 +9,10 @@
 | 敏感信息与产物自检 | ✅ 已完成（见第 1 节） |
 | `.gitignore` / `LICENSE` / `README` / `CONTRIBUTING` / `CHANGELOG` | ✅ 已补齐 |
 | 本地 Git 仓库初始化 + 首次提交 | ✅ 已完成（`main` 分支） |
-| 创建 GitHub 远程仓库 | ⏳ 需要你的 GitHub 账号 |
-| 首次推送、仓库设置、打 tag | ⏳ 拿到仓库地址后执行 |
+| 创建 GitHub 远程仓库 | ✅ [vavagent/vav-ui-agent](https://github.com/vavagent/vav-ui-agent)（Public） |
+| 首次推送 + About / Topics 设置 | ✅ 已完成（`main` 分支，9 个 topics，SSH 部署密钥） |
+| CI 构建检查 | ✅ 已通过（`.github/workflows/ci.yml`：`npm ci` + `npm run build`） |
+| 打 tag / 发布 Release | ⏳ 建议下一个动作（见第 6 节） |
 
 ## 1. 开源前自检清单
 
@@ -35,11 +37,11 @@
 | `*.bak` | 例如 `index.static.html.bak` 这类历史备份，不该进版本库 |
 | `.env` / `.env.*` | 环境变量 |
 
-保留的「必要资产」：`server/database/seed-snapshot.json`（600 条数据的唯一来源）、`home.png` / `modal.png`（README 截图）。
+保留的「必要资产」：`server/database/seed-snapshot.json`（700+ 条数据的唯一来源）、`home.png` / `modal.png`（README 截图）。
 
 ### 1.3 数据与版权
 
-- 600 条组件变体、提示词、预览 HTML 均为项目自建内容，可以随 MIT 许可公开。
+- 700+ 条组件变体、提示词、预览 HTML 均为项目自建内容，可以随 MIT 许可公开。
 - 提示词里出现的 Linear、Vercel、Ant Design、小红书等名称只用于**描述风格取向**，不含其商标、图标、设计稿原件。README 末尾已声明「与这些公司无关联」。
 - `LICENSE` 里的版权人是 `VAV UI-agent`（占位）。如果希望署名到个人或公司，把 `Copyright (c) 2026 VAV UI-agent` 改成真实主体即可，注意受雇期间的作品归属问题要先确认。
 
@@ -102,34 +104,40 @@ gh repo create vav-ui-agent --public --source=. --remote=origin --push
 
 ## 4. 关联远程并推送
 
-先确认提交作者身份（本机 Git 全局配置是空的，提交时用的是仓库内配置，**推送前请改成你自己的**）：
+本次已经配置好（仓库内配置，不是全局）：
+
+| 配置 | 值 |
+| --- | --- |
+| `user.name` | `vavagent` |
+| `user.email` | GitHub noreply 地址（`<id>+vavagent@users.noreply.github.com`），避免公开真实邮箱 |
+| `origin` | `git@github.com:vavagent/vav-ui-agent.git`（SSH） |
+| `core.sshCommand` | `ssh -i ~/.ssh/id_ed25519_vav_ui -o IdentitiesOnly=yes` |
+
+鉴权用的是单独生成的 SSH 部署密钥 `id_ed25519_vav_ui`，公钥已添加到账号的 SSH keys（标题 `vav-ui-agent push key`）。换机器时重新生成一对、把公钥加到 GitHub 即可，不需要密码或 token。
+
+如果以后要换成自己习惯的身份或 HTTPS 方式，按下面命令重配：
 
 ```bash
 git config --local user.name "你的名字"
 git config --local user.email "你的邮箱"
 git commit --amend --reset-author --no-edit    # 只改作者，不改内容
-```
 
-关联远程并推送：
-
-```bash
-git remote add origin https://github.com/<你的用户名>/vav-ui-agent.git
-git branch -M main
+git remote set-url origin https://github.com/<你的用户名>/vav-ui-agent.git
 git push -u origin main
 ```
 
-HTTPS 推送会弹浏览器授权（Git Credential Manager）；用 SSH 则把地址换成 `git@github.com:<你的用户名>/vav-ui-agent.git`，并确保 `~/.ssh/id_ed25519.pub` 已添加到 GitHub。
+HTTPS 推送会弹浏览器授权（Git Credential Manager）；用 SSH 则保持 `git@github.com:<你的用户名>/vav-ui-agent.git`，并确保对应公钥已添加到 GitHub。
 
 ## 5. 仓库设置（推上去之后 10 分钟内做完）
 
-- [ ] **About**：Description 填一句话——「28 类 UI 组件 / 600 个可直接复制的 AI 提示词变体，按分类和产品风格整理」。
-- [ ] **Topics**：`ui` `design-system` `prompt-engineering` `nuxt` `vue` `ai` `sqlite` `component-library` `design-inspiration`
+- [x] **About**：Description 填一句话——「28 类 UI 组件 / 700+ 个可直接复制的 AI 提示词变体，按分类和产品风格整理」。
+- [x] **Topics**：`ui` `design-system` `prompt-engineering` `nuxt` `vue` `ai` `sqlite` `component-library` `design-inspiration`
 - [ ] **Social preview**：上传一张 1280×640 的图（可以用 `home.png` 裁切），分享到群里/推特时有卡片。
-- [ ] **Issues**：开启；建议加两个标签 `good first issue`、`content`（新增组件变体属于内容贡献，门槛低）。
+- [x] **Issues**：已开启；建议补标签 `good first issue`、`content`（新增组件变体属于内容贡献，门槛低）。
 - [ ] **Discussions**：可选开启，用于收集「想要哪个分类」这类开放讨论。
 - [ ] **分支保护**：`main` 设为 Require PR + 至少 1 approval（单人项目可只保留 Require PR，防手滑直推）。
-- [ ] **Actions**：默认不需要 secret；建议加一个最小 CI，只跑 `npm ci && npm run build`，防止 PR 把构建搞挂。
-- [ ] **首页 GitHub 链接**：`pages/index.vue` 顶部导航的 `href="https://github.com"` 换成真实仓库地址，否则线上点进去是 GitHub 首页。
+- [x] **Actions**：已加最小 CI（`.github/workflows/ci.yml`），只跑 `npm ci` + `npm run build`，最新一次运行已通过。
+- [x] **首页 GitHub 链接**：`pages/index.vue` 顶部导航已指向 `https://github.com/vavagent/vav-ui-agent`。
 
 ### 关于线上部署（重要）
 
@@ -172,3 +180,5 @@ git push origin v0.1.0
 3. **误提交数据库**：`data/ui.db` 一旦进了历史，即使后来 ignore 也会留在提交里，只能 `git rm --cached` 后重写历史或换新仓库。
 4. **`.bak` 文件**：`index.static.html.bak` 是早期静态原型，已在 ignore 里，不要提交。
 5. **推送被拒**：`remote: Repository not found` 多为地址拼错或没有该仓库权限；`Permission denied (publickey)` 是 SSH key 未配置。
+6. **`npm ci` 报锁文件不一致 / CI 报 `Cannot find native binding`**：在已有 `node_modules` 时重建锁文件，会丢掉 Linux 等平台的原生可选依赖（oxc、lightningcss、rollup），并可能漏掉 cac / commander 这类冲突版本的嵌套副本。正确做法：把 `node_modules` 移开 → 删掉 `package-lock.json` → 跑一次真实 `npm install` → 提交新锁文件。本项目 CI 就是按这个方式修好的（见提交历史 #2–#4）。
+7. **SSH 密钥带口令**：`ssh-keygen -N ""` 在 PowerShell 里容易把 `-N` 传成字面 `""`，导致密钥实际有口令、非交互推送报 `Permission denied (publickey)`；需要时用 `cmd /c` 生成，或用 `ssh-keygen -p` 清掉口令。

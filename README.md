@@ -1,6 +1,6 @@
 # VAV UI-agent
 
-> 28 类 UI 组件、600 个可直接复制的 AI 提示词变体。按「组件分类 + 产品风格」整理好，挑一个对得上眼的，把提示词丢给 AI 就能生成代码。
+> 28 类 UI 组件、700+ 个可直接复制的 AI 提示词变体。按「组件分类 + 产品风格」整理好，挑一个对得上眼的，把提示词丢给 AI 就能生成代码。
 
 ![素材库主界面](./home.png)
 
@@ -20,12 +20,12 @@
 
 ## 功能
 
-- **600 个变体 / 28 个分类**，分四大组：导航与结构、基础控件、反馈与弹层、数据展示
+- **700+ 个变体 / 28 个分类**，分四大组：导航与结构、基础控件、反馈与弹层、数据展示
 - **风格筛选**：70+ 风格标签，按国外设计体系（antd / iOS / Material / Tailwind / shadcn…）、产品风格（Linear / Vercel / Stripe / Notion / 小红书 / 飞书 / 淘宝…）、视觉风格（极简 / 玻璃拟态 / 赛博朋克 / 新粗野主义…）、潮流风格（3D 立体 / 黏土 / 故障风…）四组收纳
 - **关键词搜索**：同时匹配组件名、描述和提示词正文
 - **视图状态全在 URL 里**：`?cat=nav&tag=Linear&q=侧边栏`，分享链接即可还原同一屏
 - **零 UI 框架**：手写 CSS + CSS 变量，没有引入 Tailwind 或组件库，方便整套换肤
-- **开箱即用**：首次启动自动建表，并从快照装载全部 600 条数据，不需要额外准备数据库
+- **开箱即用**：首次启动自动建表，并从快照装载全部 700+ 条数据，不需要额外准备数据库
 
 ## 技术栈
 
@@ -41,6 +41,8 @@
 要求 Node.js >= 20（开发时使用 v22）。
 
 ```bash
+git clone https://github.com/vavagent/vav-ui-agent.git
+cd vav-ui-agent
 npm install
 npm run dev      # http://localhost:3210
 ```
@@ -56,7 +58,7 @@ npm run preview
 
 1. 在 `data/` 下创建 `ui.db`（已被 `.gitignore` 排除）；
 2. 建 `categories`、`components` 两张表；
-3. 检测到空库时，从 `server/database/seed-snapshot.json` 装载 28 个分类、600 个组件。
+3. 检测到空库时，从 `server/database/seed-snapshot.json` 装载 28 个分类、700+ 个组件。
 
 想恢复出厂数据，停掉服务后删掉 `data/ui.db`（连同 `ui.db-shm`、`ui.db-wal`）再启动即可。
 
@@ -77,7 +79,7 @@ npm run preview
 │  │  └─ components.get.ts      # 组件列表（cat / q / tag 三个筛选参数）
 │  └─ database/
 │     ├─ index.ts               # SQLite 初始化、建表、种子装载
-│     └─ seed-snapshot.json     # 全量数据快照（28 分类 / 600 组件）
+│     └─ seed-snapshot.json     # 全量数据快照（28 分类 / 700+ 组件）
 ├─ data/ui.db                   # 运行时生成，不提交
 ├─ home.png / modal.png         # README 截图
 └─ LICENSE                      # MIT
