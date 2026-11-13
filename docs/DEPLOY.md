@@ -2,7 +2,8 @@
 
 线上实例：<https://ui.vavagent.com/> · 代码仓库：<https://github.com/vavagent/vav-ui-agent>
 
-- 首次部署：2026-11-13 12:16–12:24（服务器时间 CST）
+- 首次部署：2026-11-13 12:16–12:24（服务器时间 CST，服务器端构建）
+- 改为本地构建：2026-11-13 13:05（版本 `20261113-1345`，服务器只解包 + 重启）
 - 执行人：AI 助手（本地 Windows 工作站 → 47.104.100.227）
 - 项目：VAV UI-agent（Nuxt 3 SSR + better-sqlite3，UI 提示词素材库）
 
@@ -16,11 +17,13 @@
 | 项目 | 路径 |
 | --- | --- |
 | 本地工作副本 | `D:\www\vavagent\vavagent_ui`（GitHub `vavagent/vav-ui-agent` 的 clone） |
-| 上传用源码包 | `D:\www\vavagent\vav-ui-src.tar.gz`（不含 `.git` / `.github`） |
+| 发版脚本 | `scripts/deploy.py`（本地构建 → 换 Linux 原生库 → 上传 → 切版本，见第 7 节） |
+| 构建产物 | `%TEMP%\vav-ui-build-<版本>.tar.gz`，约 1.6MB（只含 `.output`） |
 | 服务器应用根 | `/opt/vavagent-ui` |
-| 版本目录 | `/opt/vavagent-ui/releases/20261113-1230/`（含 `node_modules`、`.output`，276MB） |
-| 生效入口（软链接） | `/opt/vavagent-ui/current` → `releases/20261113-1230` |
-| 持久化数据 | `/opt/vavagent-ui/data/ui.db`（WAL，首次启动自动建表并装载 702 条变体） |
+| 当前版本目录 | `/opt/vavagent-ui/releases/20261113-1345/`（5.3MB，仅 `.output`） |
+| 首版（服务器构建） | `/opt/vavagent-ui/releases/20261113-1230/`（276MB，含完整 `node_modules`，留作回退） |
+| 生效入口（软链接） | `/opt/vavagent-ui/current` → `releases/20261113-1345` |
+| 持久化数据 | `/opt/vavagent-ui/data/ui.db`（WAL，首次启动自动建表并装载 702 条变体；主库约 556KB + WAL） |
 | 快照副本（供生产进程读取） | `/opt/vavagent-ui/server/database/seed-snapshot.json` |
 
 注意：`server/database/index.ts` 用 `process.cwd()` 定位 `data/` 和 `server/database/seed-snapshot.json`，所以 systemd 的 `WorkingDirectory` 必须是 `/opt/vavagent-ui`，而不是版本目录。
@@ -98,33 +101,42 @@ rm -rf /opt/vavagent-ui
 
 注意：删 `/opt/vavagent-ui` 会连 `data/ui.db` 一起删掉，库里的增量数据（如果在页面上新增过变体）需要先导出。
 
-## 7. 下次发版步骤
+## 7. 发版方式：本地构建，服务器只运行
 
-1. 本地改代码（`D:\www\vavagent\vavagent_ui`），需要时同步推到 GitHub。
-2. 打源码包（排除 `.git`/`.github`）：
+线上不再在服务器上跑 `npm ci` / `npm run build`，产物在本地（Windows）构建好再上传，服务器只负责解包、切软链接、重启。入口脚本：`scripts/deploy.py`。
 
 ```powershell
 cd D:\www\vavagent\vavagent_ui
-tar -czf D:\www\vavagent\vav-ui-src.tar.gz --exclude=.git --exclude=.github .
+python scripts\deploy.py                 # 本地构建 + 替换原生库 + 上传 + 切版本 + 探活
+python scripts\deploy.py --skip-build    # 复用现有 .output，只上传发布
+python scripts\deploy.py --version 20261113-1500   # 指定版本号（默认时间戳）
 ```
 
-3. 上传到服务器 `/tmp/vav-ui-src.tar.gz`，在服务器上构建（不要在 Windows 上构建，`better-sqlite3` 等原生模块平台不同）：
+脚本做的事：
+
+1. `npm ci`（仅在缺 `node_modules` 时）→ `npm run build`，产出 `.output/`（约 4MB）；
+2. **替换原生库**：`better-sqlite3` 是 C++ 扩展，Windows 编译出的 `better_sqlite3.node` 到 Linux 会报 `invalid ELF header`。脚本从 GitHub Releases 下载官方 `better-sqlite3-v11.10.0-node-v127-linux-x64` 预编译包，覆盖到 `.output/server/node_modules/better-sqlite3/build/Release/better_sqlite3.node`（Node 22 的 ABI 是 127；升级 Node 大版本或 `better-sqlite3` 版本时要同步改脚本里的 `NODE_ABI` / `BSQ3_VERSION`）；
+3. 打包 `.output` 为 tar.gz 并上传到 `/tmp`，同时上传 `server/database/seed-snapshot.json` 到应用根（只影响空库首次装载）；
+4. 解包到 `/opt/vavagent-ui/releases/<版本>`，切 `current` 软链接，重启 `vavagent-ui`；
+5. 探活内网 `http://172.17.0.1:3210/` 与公网 `https://ui.vavagent.com/`，**非 200 自动回滚到上一版本**；
+6. 保留最近 3 个版本，其余自动清理。
+
+手动等价命令（脚本不在时用）：
 
 ```sh
 V=$(date +%Y%m%d-%H%M)
 mkdir -p /opt/vavagent-ui/releases/$V
-tar -xzf /tmp/vav-ui-src.tar.gz -C /opt/vavagent-ui/releases/$V
-cp /opt/vavagent-ui/releases/$V/server/database/seed-snapshot.json /opt/vavagent-ui/server/database/seed-snapshot.json
-cd /opt/vavagent-ui/releases/$V
-NODE_OPTIONS=--max-old-space-size=1024 npm ci --no-audit --no-fund
-npm run build
+tar -xzf /tmp/vav-ui-build-$V.tar.gz -C /opt/vavagent-ui/releases/$V   # 包内已含 .output/
 ln -sfn releases/$V /opt/vavagent-ui/current
 systemctl restart vavagent-ui
+curl -s -o /dev/null -w '%{http_code}\n' http://172.17.0.1:3210/
 ```
 
-4. 验证 `curl -s -o /dev/null -w '%{http_code}' https://ui.vavagent.com/`，正常后旧版本目录可保留一版再删。
+排障提示：
 
-排障提示：机器只有 2 核 / 1.9GB 内存（另有 1GB swap），构建时不要同时跑别的 Node 构建；`npm ci` 会为 `better-sqlite3` 下载 Linux 预编译包，需要外网。
+- 服务器只有 2 核 / 1.9GB 内存，构建搬到本地后这台机器压力主要来自 Node 运行时（约 36MB），不要再在服务器上跑构建；
+- 线上 Node 必须与本地 Node 大版本一致（当前都是 22，ABI 127），否则原生库不匹配；
+- `deploy.py` 读取 `D:\www\vavagent\ssh.env` 里的服务器地址与密码，该文件在仓库外，不要提交。
 
 ## 8. 数据说明
 
