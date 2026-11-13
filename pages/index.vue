@@ -81,12 +81,27 @@ function setQuery(patch) {
     if (!v) delete q[k]
     else q[k] = v
   }
+  if (patch.cat) track('cat', { cat: patch.cat })
+  if (patch.tag) track('tag', { name: patch.tag })
   router.push({ query: q })
 }
 
-async function copy(text, ev) {
+/* 搜索词：停止输入 800ms 后记一次，避免每敲一个字都上报 */
+let searchTimer = null
+function onSearchInput(e) {
+  const value = e.target.value
+  setQuery({ q: value })
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => {
+    const q = String(value || '').trim()
+    if (q) track('search', { q })
+  }, 800)
+}
+
+async function copy(c, ev) {
+  track('copy', { cat: c.category_slug, name: c.name })
   try {
-    await navigator.clipboard.writeText(text)
+    await navigator.clipboard.writeText(c.prompt)
     const btn = ev.currentTarget
     const old = btn.textContent
     btn.textContent = '已复制 ✓'
@@ -109,7 +124,7 @@ async function copy(text, ev) {
           <input
             :value="searchQ"
             placeholder="输入关键字搜索组件…"
-            @input="setQuery({ q: $event.target.value })"
+            @input="onSearchInput"
           >
         </div>
         <div class="topbar-right">
@@ -118,6 +133,7 @@ async function copy(text, ev) {
             <span v-if="activeTag" class="style-badge">{{ activeTag }}</span>
           </button>
           <a class="topbar-link" href="/guide">使用教程</a>
+          <a class="topbar-link" href="/stats">数据看板</a>
           <a class="topbar-link" href="https://github.com/vavagent/vav-ui-agent" target="_blank">GitHub</a>
         </div>
       </div>
@@ -186,7 +202,7 @@ async function copy(text, ev) {
           <div class="prompt">
             <div class="prompt-head">
               <span>AI 提示词（可直接复制）</span>
-              <button class="copy-btn" @click="copy(c.prompt, $event)">复制</button>
+              <button class="copy-btn" @click="copy(c, $event)">复制</button>
             </div>
             <pre>{{ c.prompt }}</pre>
           </div>

@@ -144,3 +144,47 @@ ssh root@47.104.100.227 "mkdir -p /clouddream/nginx-proxy-manage/data/static/ui/
 - 旧的 `data/ui.db` 只留在 `/opt/vavagent-ui` 作为 SSR 回退用，静态站不读它。
 - 如果将来要在页面上编辑内容，需要恢复 SSR（或加一层写入 API 后再重建静态站）。
 
+## 9. 访问统计（自带埋点，无第三方）
+
+链路：前端 `track()` → `GET /collect.gif?ev=...` → nginx 写日志 → 服务器 cron 汇总 → `/stats.json` → `/stats` 看板。
+
+| 项目 | 值 |
+| --- | --- |
+| 前端埋点 | `composables/useTrack.ts`（`track(event, params)`）、`plugins/track.client.ts`（PV，仅 path 变化才计） |
+| 采集端点 | nginx `location = /collect.gif`，写 `/data/logs/ui-collect.log`，返回 204 |
+| 日志格式 | `log_format vav_ui`：`ISO时间 \t ev \t cat \t name \t q \t path \t IP \t UA` |
+| 汇总脚本 | `scripts/stats-aggregate.py`，服务器上装在 `/usr/local/bin/vav-ui-stats.py` |
+| 汇总周期 | cron `*/5 * * * *`，日志读完即清空 |
+| 输出 | `/clouddream/nginx-proxy-manage/data/static/ui/live/stats.json`（nginx `location = /stats.json`） |
+| 看板 | <https://ui.vavagent.com/stats>（`pages/stats.vue`） |
+| 数据保留 | 最近 60 天 |
+
+事件口径：
+
+| 事件 | 触发 | 记录字段 |
+| --- | --- | --- |
+| `pv` | 路由 path 变化（首屏一次） | path、cat、q |
+| `cat` | 左侧切分类 | cat |
+| `tag` | 点风格标签 / 风格弹窗选择 | name=标签 |
+| `search` | 搜索框输入停止 800ms 后 | q |
+| `copy` | 点「复制」提示词 | cat、name=变体名 |
+
+隐私：日志里只保留原始 IP 用于当天 UV 去重，汇总时立刻替换成 `sha1(日期|IP)` 前 12 位，原始 IP 随日志清空丢弃；不使用 Cookie、不接第三方统计。
+
+常用操作：
+
+```sh
+# 手动汇总一次
+python3 /usr/local/bin/vav-ui-stats.py
+
+# 清空统计（看板归零）
+truncate -s 0 /clouddream/nginx-proxy-manage/data/logs/ui-collect.log
+echo '{"updated_at":null,"days":{}}' > /clouddream/nginx-proxy-manage/data/static/ui/live/stats.json
+
+# 看采集是否在工作
+tail -5 /clouddream/nginx-proxy-manage/data/logs/ui-collect.log
+crontab -l | grep vav-ui-stats
+```
+
+改埋点格式时注意：nginx 的 `$arg_*` 是 URL 编码值，汇总脚本用 `unquote_plus` 解码。
+

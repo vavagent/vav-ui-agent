@@ -28,6 +28,7 @@
 - **视图状态全在 URL 里**：`?cat=nav&tag=Linear&q=侧边栏`，分享链接即可还原同一屏
 - **零 UI 框架**：手写 CSS + CSS 变量，没有引入 Tailwind 或组件库，方便整套换肤
 - **零后端**：`nuxt generate` 出纯静态文件（`index.html` / `guide/` / `filter/` / `catalog.json`），任意静态托管、CDN 或对象存储都能直接跑，不需要 Node、数据库或服务端进程
+- **自带访问统计**：轻量埋点（`/collect.gif` + nginx 日志 + 定时汇总），`/stats` 看板能看到今日 PV/UV、最近 14 天趋势、热门分类、被复制最多的组件、搜索词与风格标签偏好；不接第三方统计、不用 Cookie
 
 ## 技术栈
 
@@ -68,11 +69,16 @@ npx serve .output/public -l 3210
 ├─ nuxt.config.ts               # 站点标题、全局样式、预渲染路由（/、/guide、/filter）
 ├─ scripts/
 │  ├─ make-catalog.mjs          # 快照 → public/catalog.json（构建期数据导出）
+│  ├─ make-favicon.py           # 生成 favicon / PWA 图标
+│  ├─ stats-aggregate.py        # nginx 埋点日志 → stats.json（服务器 cron 每 5 分钟）
 │  └─ deploy.py                 # 本地生成静态站 → 上传服务器 → 切软链接 → 探活
+├─ composables/useTrack.ts      # 埋点上报（/collect.gif）
+├─ plugins/track.client.ts      # PV 采集
 ├─ assets/css/main.css          # CSS 变量与基础样式
 ├─ pages/
 │  ├─ index.vue                 # 素材库主界面：分类侧栏 / 搜索 / 标签筛选 / 预览 / 复制
 │  ├─ filter.vue                # 电商风格筛选面板的独立示例
+│  ├─ stats.vue                 # 数据看板（今日 PV/UV、热门分类、复制榜、搜索词）
 │  └─ guide.vue                 # 使用教程（选组件 → 挑变体 → 复制提示词）
 ├─ server/
 │  ├─ api/

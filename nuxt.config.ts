@@ -26,7 +26,7 @@ export default defineNuxtConfig({
     storage: {},
     // SSG：构建期把三个页面预渲染成静态 HTML，数据由 public/catalog.json 提供
     prerender: {
-      routes: ['/', '/guide', '/filter'],
+      routes: ['/', '/guide', '/filter', '/stats'],
       crawlLinks: true
     }
   }
