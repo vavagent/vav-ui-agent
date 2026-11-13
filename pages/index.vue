@@ -116,7 +116,7 @@ async function copy(text, ev) {
             <span v-if="activeTag" class="style-badge">{{ activeTag }}</span>
           </button>
           <a class="topbar-link" href="/guide">使用教程</a>
-          <a class="topbar-link" href="https://github.com" target="_blank">GitHub</a>
+          <a class="topbar-link" href="https://github.com/vavagent/vav-ui-agent" target="_blank">GitHub</a>
         </div>
       </div>
     </header>
