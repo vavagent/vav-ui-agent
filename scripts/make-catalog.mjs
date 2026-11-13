@@ -49,7 +49,7 @@ const rows = components
     name: c.name,
     description: c.desc || '',
     tags: parseTags(c.tags),
-    preview: c.preview || '',
+    preview_html: c.preview || '',
     prompt: c.prompt || '',
     sort: c.sort ?? i + 1
   }))

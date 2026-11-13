@@ -49,7 +49,8 @@ def load_env() -> dict:
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
     print(f"[run] {' '.join(cmd)}")
-    subprocess.run(cmd, cwd=str(cwd or ROOT), check=True, shell=False)
+    # Windows 上 npm 是 npm.cmd，必须经由 shell 解析
+    subprocess.run(cmd, cwd=str(cwd or ROOT), check=True, shell=(os.name == "nt"))
 
 
 def build() -> None:
