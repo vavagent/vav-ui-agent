@@ -2,10 +2,11 @@
 
 线上实例：<https://ui.vavagent.com/> · 代码仓库：<https://github.com/vavagent/vav-ui-agent>
 
-- 首次部署：2026-11-13 12:16–12:24（服务器时间 CST，服务器端构建）
+- 首次部署：2026-11-13 12:16–12:24（服务器端构建，Nuxt SSR + better-sqlite3 + Node 常驻）
 - 改为本地构建：2026-11-13 13:05（版本 `20261113-1345`，服务器只解包 + 重启）
+- 改为静态 SSG：2026-11-13 13:12（版本 `20261113-1430`，nginx 直接托管，**已停用 Node 服务**）
 - 执行人：AI 助手（本地 Windows 工作站 → 47.104.100.227）
-- 项目：VAV UI-agent（Nuxt 3 SSR + better-sqlite3，UI 提示词素材库）
+- 项目：VAV UI-agent（Nuxt 3 → `nuxt generate` 纯静态站点）
 
 ## 1. 访问地址
 
@@ -17,129 +18,129 @@
 | 项目 | 路径 |
 | --- | --- |
 | 本地工作副本 | `D:\www\vavagent\vavagent_ui`（GitHub `vavagent/vav-ui-agent` 的 clone） |
-| 发版脚本 | `scripts/deploy.py`（本地构建 → 换 Linux 原生库 → 上传 → 切版本，见第 7 节） |
-| 构建产物 | `%TEMP%\vav-ui-build-<版本>.tar.gz`，约 1.6MB（只含 `.output`） |
-| 服务器应用根 | `/opt/vavagent-ui` |
-| 当前版本目录 | `/opt/vavagent-ui/releases/20261113-1345/`（5.3MB，仅 `.output`） |
-| 首版（服务器构建） | `/opt/vavagent-ui/releases/20261113-1230/`（276MB，含完整 `node_modules`，留作回退） |
-| 生效入口（软链接） | `/opt/vavagent-ui/current` → `releases/20261113-1345` |
-| 持久化数据 | `/opt/vavagent-ui/data/ui.db`（WAL，首次启动自动建表并装载 702 条变体；主库约 556KB + WAL） |
-| 快照副本（供生产进程读取） | `/opt/vavagent-ui/server/database/seed-snapshot.json` |
-
-注意：`server/database/index.ts` 用 `process.cwd()` 定位 `data/` 和 `server/database/seed-snapshot.json`，所以 systemd 的 `WorkingDirectory` 必须是 `/opt/vavagent-ui`，而不是版本目录。
+| 发版脚本 | `scripts/deploy.py`（本地 `nuxt generate` → 上传 → 切软链接 → 探活，见第 7 节） |
+| 构建产物 | `%TEMP%\ui-static-<版本>.tar.gz`，约 320KB（只含 `.output/public`） |
+| 静态站点根 | `/clouddream/nginx-proxy-manage/data/static/ui`（容器内 `/data/static/ui`） |
+| 当前版本目录 | `.../static/ui/releases/20261113-1430/`（约 3MB：`index.html`、`guide/`、`filter/`、`_payload.json`、`catalog.json`、`_nuxt/`） |
+| 生效入口（软链接） | `.../static/ui/current` → `releases/20261113-1430` |
+| 旧 SSR 目录（保留） | `/opt/vavagent-ui`（含 `releases/20261113-1345`、`releases/20261113-1230`、`data/ui.db`） |
 
 ## 3. 运行方式
 
+**当前没有任何服务端进程**：页面由 nginx 直接读静态文件，`vavagent-ui.service` 已 `disable --now`（unit 文件保留，可随时重新启用）。
+
 | 项目 | 值 |
 | --- | --- |
-| systemd 单元 | `/etc/systemd/system/vavagent-ui.service`（enabled，active） |
-| 启动命令 | `/usr/local/bin/node /opt/vavagent-ui/current/.output/server/index.mjs` |
-| 监听 | `172.17.0.1:3210`（只对 Docker 网桥开放，不直接暴露公网） |
-| 环境变量 | `NODE_ENV=production`、`PORT=3210`、`HOST=172.17.0.1`、`NODE_OPTIONS=--max-old-space-size=600` |
-| 重启策略 | `Restart=on-failure`，`RestartSec=3` |
-| Node 版本 | v22.23.4（服务器 `/usr/local/bin/node`） |
+| 静态托管 | nginx 容器 `nginx-app`，`root /data/static/ui/current` |
+| 兜底路由 | `try_files $uri $uri/ /200.html`（未知路径返回 200.html，由前端接管） |
+| 缓存 | `/_nuxt/*` 一年 immutable；`/catalog.json` 300 秒 |
+| 压缩 | gzip 已开：首页 HTML 72KB → 11.6KB，payload 655KB → 157KB |
+| Node 服务 | 已停用；`systemctl enable --now vavagent-ui` 可恢复 SSR 版本（需同时改回 nginx 反代） |
 
 ## 4. Nginx 与证书
 
 | 项目 | 路径 / 值 |
 | --- | --- |
 | 站点配置 | `/clouddream/nginx-proxy-manage/data/nginx/custom/http.conf`（容器内 `/data/nginx/custom/http.conf`） |
-| 部署前备份（不含 ui 站点） | `http.conf.bak.ui-20261113-122054` |
-| 切 HTTPS 前备份（含 80 段） | `http.conf.bak.ui-https-20261113-122152` |
+| 静态化前备份（含 443 反代段） | `http.conf.bak.ui-static-20261113-131259` 等 `http.conf.bak.ui-*` |
 | 证书 | 容器 `/etc/letsencrypt/live/ui.vavagent.com/fullchain.pem`、`privkey.pem` |
 | 签发方式 | Let's Encrypt，HTTP-01 / webroot，签发 2026-11-13，到期 2027-02-11 |
 | ACME 校验目录 | `/clouddream/nginx-proxy-manage/data/letsencrypt-webroot`（容器 `/data/letsencrypt-webroot`） |
-| 续期 | 既有 cron 每日 03:15 `certbot renew --quiet --deploy-hook "nginx -s reload"`，新证书自动纳入 |
+| 续期 | 既有 cron 每日 03:15 `certbot renew --quiet --deploy-hook "nginx -s reload"` |
 
 配置内容：
 
 - 80 端口：`/.well-known/acme-challenge/` 走 webroot，其余 301 到 HTTPS；
-- 443 端口：挂 `ui.vavagent.com` 证书，`proxy_pass http://172.17.0.1:3210`，带 `Host` / `X-Real-IP` / `X-Forwarded-For` / `X-Forwarded-Proto`，开启 gzip，`client_max_body_size 2m`，禁止 `/\.` 路径。
+- 443 端口：挂 `ui.vavagent.com` 证书，`root /data/static/ui/current`，`index.html` 优先，gzip、`X-Content-Type-Options`、`Referrer-Policy`、禁止 `/\.` 路径。
 
-## 5. 验证结果
+## 5. 验证结果（静态版）
 
 | 检查项 | 结果 |
 | --- | --- |
-| `https://ui.vavagent.com/` | 200，163800 字节，HTTP/2 |
-| `/guide` `/filter` | 200 / 200 |
-| 证书校验（系统 CA） | `ssl_verify_result=0`，`CN=ui.vavagent.com`，SAN 仅该域名 |
-| HTTP → HTTPS | 301 → `https://ui.vavagent.com/` |
-| API | `/api/categories` 200（四大分组 JSON），`/api/components?cat=nav` 200（返回 Linear 风格变体） |
-| 数据装载 | 启动日志 `[seed] snapshot inserted 702 components` |
-| 其他站点未受影响 | www 200、vavagent.com 301、me 200、stats 303，证书校验均为 0 |
-| 服务开机自启 | `systemctl is-enabled` = enabled，`is-active` = active |
+| `https://ui.vavagent.com/` | 200，72649 字节 HTML，已含预渲染的分类/标签/卡片内容 |
+| `/guide` `/filter` | 301 → `/guide/`、`/filter/`，200 |
+| `/catalog.json` | 200，657948 字节 `application/json` |
+| `/_payload.json` | 200，654881 字节，gzip 后 156767 字节 |
+| gzip | 首页 HTML 72KB → 11589 字节 |
+| 交互（浏览器实测） | 切分类 33 张卡片、`q=渐变&tag=Linear` 3 张、教程页正常 |
+| 停止 Node 服务后 | 首页 / 教程页仍 200，`node` 进程数为 0 |
+| 证书校验 | `CN=ui.vavagent.com`，SAN 仅该域名 |
+| 其他站点未受影响 | www 200、vavagent.com 301、me 200、stats 303 |
 
 ## 6. 回退方法
 
-以下命令均以 root 在宿主机执行；改配置后必须 `nginx -t` 通过再 reload。
+以下命令均以 root 在宿主机执行；改 nginx 配置后必须 `nginx -t` 通过再 reload。
 
-1. **内容回退到上一版**（即时生效，需重启服务）
+1. **回退到上一版静态内容**（即时生效，无需 reload）
 
 ```sh
-ln -sfn releases/<旧版本号> /opt/vavagent-ui/current
-systemctl restart vavagent-ui
+ls -1dt /clouddream/nginx-proxy-manage/data/static/ui/releases/
+ln -sfn releases/<旧版本号> /clouddream/nginx-proxy-manage/data/static/ui/current
 ```
 
-2. **只退回 80 段（去掉 HTTPS）**
+2. **回到旧的 SSR 版本（Nuxt Node 服务）**
 
 ```sh
 cd /clouddream/nginx-proxy-manage/data/nginx/custom
-cp -p http.conf.bak.ui-https-20261113-122152 http.conf
+cp -p http.conf.bak.ui-static-20261113-131259 http.conf   # 恢复 443 反代段
 docker exec nginx-app nginx -t && docker exec nginx-app nginx -s reload
+systemctl enable --now vavagent-ui                        # 启动 /opt/vavagent-ui/current
+curl -s -o /dev/null -w '%{http_code}\n' http://172.17.0.1:3210/
 ```
 
 3. **彻底撤掉 ui 站点**
 
 ```sh
 cd /clouddream/nginx-proxy-manage/data/nginx/custom
-cp -p http.conf.bak.ui-20261113-122054 http.conf
+cp -p http.conf.bak.ui-20261113-122054 http.conf          # 不含 ui 段
 docker exec nginx-app nginx -t && docker exec nginx-app nginx -s reload
-systemctl disable --now vavagent-ui
+systemctl disable vavagent-ui
 docker exec nginx-app certbot delete --cert-name ui.vavagent.com
-rm -rf /opt/vavagent-ui
+rm -rf /clouddream/nginx-proxy-manage/data/static/ui /opt/vavagent-ui
 ```
 
-注意：删 `/opt/vavagent-ui` 会连 `data/ui.db` 一起删掉，库里的增量数据（如果在页面上新增过变体）需要先导出。
+注意：删 `/opt/vavagent-ui` 会连 `data/ui.db` 一起删掉。
 
-## 7. 发版方式：本地构建，服务器只运行
+## 7. 发版方式：本地生成静态站，服务器只放文件
 
-线上不再在服务器上跑 `npm ci` / `npm run build`，产物在本地（Windows）构建好再上传，服务器只负责解包、切软链接、重启。入口脚本：`scripts/deploy.py`。
+线上不跑构建、不跑 Node：本地 `nuxt generate` 出静态文件，`scp`/上传到服务器切软链接即可。入口脚本：`scripts/deploy.py`。
 
 ```powershell
 cd D:\www\vavagent\vavagent_ui
-python scripts\deploy.py                 # 本地构建 + 替换原生库 + 上传 + 切版本 + 探活
-python scripts\deploy.py --skip-build    # 复用现有 .output，只上传发布
-python scripts\deploy.py --version 20261113-1500   # 指定版本号（默认时间戳）
+python scripts\deploy.py                 # 生成 + 打包 + 上传 + 切版本 + 探活（失败自动回滚）
+python scripts\deploy.py --skip-build    # 复用现有 .output/public，只发布
+python scripts\deploy.py --dry-run       # 只生成和打包，观察产物大小
 ```
 
 脚本做的事：
 
-1. `npm ci`（仅在缺 `node_modules` 时）→ `npm run build`，产出 `.output/`（约 4MB）；
-2. **替换原生库**：`better-sqlite3` 是 C++ 扩展，Windows 编译出的 `better_sqlite3.node` 到 Linux 会报 `invalid ELF header`。脚本从 GitHub Releases 下载官方 `better-sqlite3-v11.10.0-node-v127-linux-x64` 预编译包，覆盖到 `.output/server/node_modules/better-sqlite3/build/Release/better_sqlite3.node`（Node 22 的 ABI 是 127；升级 Node 大版本或 `better-sqlite3` 版本时要同步改脚本里的 `NODE_ABI` / `BSQ3_VERSION`）；
-3. 打包 `.output` 为 tar.gz 并上传到 `/tmp`，同时上传 `server/database/seed-snapshot.json` 到应用根（只影响空库首次装载）；
-4. 解包到 `/opt/vavagent-ui/releases/<版本>`，切 `current` 软链接，重启 `vavagent-ui`；
-5. 探活内网 `http://172.17.0.1:3210/` 与公网 `https://ui.vavagent.com/`，**非 200 自动回滚到上一版本**；
-6. 保留最近 3 个版本，其余自动清理。
+1. 缺 `node_modules` 时先 `npm ci`，然后 `npm run generate`；
+2. `scripts/make-catalog.mjs` 把 `server/database/seed-snapshot.json` 导出成 `public/catalog.json`（28 分类 / 702 变体 / 643KB），构建期由 `server/api/catalog.get.ts` 读取后写进 `_payload.json`；
+3. 校验 `.output/public/index.html` 里确实有预渲染内容（没有就中止，避免发出空壳页面）；
+4. 打包 `.output/public` 为 tar.gz（约 320KB，比 SSR 的 1.6MB 小一个量级）；
+5. 上传 `/tmp` → 解包到 `.../static/ui/releases/<版本>` → 切 `current` 软链接；
+6. 探活 `https://ui.vavagent.com/`（200 且含「导航菜单」），失败自动把软链接指回上一版；
+7. 只保留最近 3 个静态版本。
 
-手动等价命令（脚本不在时用）：
+**为什么 scp 就够了**：静态站没有原生库、没有 Node 依赖，产物就是一堆文本文件，传输层用 `scp` / `tar` / `rsync` 都行。`deploy.py` 剩下的价值只有三件事：统一构建入口、原子切换（软链接）、探活失败自动回滚。想手动发也可以：
 
 ```sh
 V=$(date +%Y%m%d-%H%M)
-mkdir -p /opt/vavagent-ui/releases/$V
-tar -xzf /tmp/vav-ui-build-$V.tar.gz -C /opt/vavagent-ui/releases/$V   # 包内已含 .output/
-ln -sfn releases/$V /opt/vavagent-ui/current
-systemctl restart vavagent-ui
-curl -s -o /dev/null -w '%{http_code}\n' http://172.17.0.1:3210/
+scp ui-static-$V.tar.gz root@47.104.100.227:/tmp/
+ssh root@47.104.100.227 "mkdir -p /clouddream/nginx-proxy-manage/data/static/ui/releases/$V && \
+  tar -xzf /tmp/ui-static-$V.tar.gz -C /clouddream/nginx-proxy-manage/data/static/ui/releases/$V && \
+  ln -sfn releases/$V /clouddream/nginx-proxy-manage/data/static/ui/current"
 ```
 
 排障提示：
 
-- 服务器只有 2 核 / 1.9GB 内存，构建搬到本地后这台机器压力主要来自 Node 运行时（约 36MB），不要再在服务器上跑构建；
-- 线上 Node 必须与本地 Node 大版本一致（当前都是 22，ABI 127），否则原生库不匹配；
+- 服务器只有 2 核 / 1.9GB 内存，静态化后这台机器不再需要 Node 和构建，压力只剩 nginx；
+- 静态版没有 API 了（`/api/*` 不存在），前端所有筛选在浏览器本地完成；
 - `deploy.py` 读取 `D:\www\vavagent\ssh.env` 里的服务器地址与密码，该文件在仓库外，不要提交。
 
 ## 8. 数据说明
 
-- 线上库独立于仓库：仓库里的 `seed-snapshot.json` 只用于**空库首次装载**；线上新增/修改的变体只存在 `data/ui.db`。
-- 如需把线上数据回流到仓库，导出 `components` 表为 JSON 覆盖 `seed-snapshot.json` 再提交。
-- 备份建议：`sqlite3 /opt/vavagent-ui/data/ui.db ".backup /root/backup/ui-$(date +%F).db"`（WAL 下不要直接 cp 主文件）。
+- **内容在构建时固化**：`public/catalog.json` 来自 `server/database/seed-snapshot.json`，页面内容随版本走。改数据必须重新构建发版，线上不会再实时读库。
+- 旧的 `data/ui.db` 只留在 `/opt/vavagent-ui` 作为 SSR 回退用，静态站不读它。
+- 如果将来要在页面上编辑内容，需要恢复 SSR（或加一层写入 API 后再重建静态站）。
+

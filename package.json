@@ -1,6 +1,6 @@
 {
   "name": "vav-ui-agent",
-  "description": "28 类 UI 组件 / 600 个可直接复制的 AI 提示词变体，按分类与产品风格整理",
+  "description": "28 类 UI 组件 / 700+ 个可直接复制的 AI 提示词变体，按分类与产品风格整理",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -8,9 +8,10 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "nuxt dev -p 3210",
-    "build": "nuxt build",
-    "preview": "nuxt preview"
+    "dev": "node scripts/make-catalog.mjs && nuxt dev -p 3210",
+    "build": "node scripts/make-catalog.mjs && nuxt build",
+    "generate": "node scripts/make-catalog.mjs && nuxt generate",
+    "preview": "npx serve .output/public -l 3210"
   },
   "dependencies": {
     "nuxt": "^3.13.0",

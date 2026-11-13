@@ -11,7 +11,16 @@ export default defineNuxtConfig({
     }
   },
   css: ['~/assets/css/main.css'],
+  experimental: {
+    // 把 SSR 取到的数据抽到 _payload.json，HTML 保持轻量
+    payloadExtraction: true
+  },
   nitro: {
-    storage: {}
+    storage: {},
+    // SSG：构建期把三个页面预渲染成静态 HTML，数据由 public/catalog.json 提供
+    prerender: {
+      routes: ['/', '/guide', '/filter'],
+      crawlLinks: true
+    }
   }
 })

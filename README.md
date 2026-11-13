@@ -27,15 +27,15 @@
 - **关键词搜索**：同时匹配组件名、描述和提示词正文
 - **视图状态全在 URL 里**：`?cat=nav&tag=Linear&q=侧边栏`，分享链接即可还原同一屏
 - **零 UI 框架**：手写 CSS + CSS 变量，没有引入 Tailwind 或组件库，方便整套换肤
-- **开箱即用**：首次启动自动建表，并从快照装载全部 700+ 条数据，不需要额外准备数据库
+- **零后端**：`nuxt generate` 出纯静态文件（`index.html` / `guide/` / `filter/` / `catalog.json`），任意静态托管、CDN 或对象存储都能直接跑，不需要 Node、数据库或服务端进程
 
 ## 技术栈
 
 | 层 | 选型 |
 | --- | --- |
-| 框架 | Nuxt 3（SSR，`useFetch` 服务端取数） |
+| 框架 | Nuxt 3（SSG：`nuxt generate` 出纯静态站） |
 | UI | Vue 3 + 手写 CSS（`assets/css/main.css` + 页面 scoped style） |
-| 数据 | better-sqlite3（WAL 模式），单文件库 `data/ui.db` |
+| 数据 | 构建期由 `scripts/make-catalog.mjs` 从快照导出 `catalog.json`，页面加载后本地筛选 |
 | 语言 | TypeScript |
 
 ## 快速开始
@@ -49,27 +49,26 @@ npm install
 npm run dev      # http://localhost:3210
 ```
 
-构建与本地预览：
+构建静态站与本地预览：
 
 ```bash
-npm run build
-npm run preview
+npm run generate   # 生成 .output/public（纯静态）
+npx serve .output/public -l 3210
 ```
 
-首次启动时 `server/database/index.ts` 会：
+`npm run dev` / `npm run generate` 都会先执行 `scripts/make-catalog.mjs`，把 `server/database/seed-snapshot.json` 导出成 `public/catalog.json`（28 分类 / 702 变体 / 643KB），页面拿这份数据在浏览器里完成分类、搜索和标签筛选。
 
-1. 在 `data/` 下创建 `ui.db`（已被 `.gitignore` 排除）；
-2. 建 `categories`、`components` 两张表；
-3. 检测到空库时，从 `server/database/seed-snapshot.json` 装载 28 个分类、700+ 个组件。
-
-想恢复出厂数据，停掉服务后删掉 `data/ui.db`（连同 `ui.db-shm`、`ui.db-wal`）再启动即可。
+`server/database/index.ts` 保留着 SQLite 版本的取数实现（SSR 模式或自建 API 时可复用），静态站不依赖它，也不需要数据库文件。
 
 ## 目录结构
 
 ```
 .
 ├─ app.vue                      # 挂载 NuxtPage
-├─ nuxt.config.ts               # SSR、站点标题、全局样式入口
+├─ nuxt.config.ts               # 站点标题、全局样式、预渲染路由（/、/guide、/filter）
+├─ scripts/
+│  ├─ make-catalog.mjs          # 快照 → public/catalog.json（构建期数据导出）
+│  └─ deploy.py                 # 本地生成静态站 → 上传服务器 → 切软链接 → 探活
 ├─ assets/css/main.css          # CSS 变量与基础样式
 ├─ pages/
 │  ├─ index.vue                 # 素材库主界面：分类侧栏 / 搜索 / 标签筛选 / 预览 / 复制
@@ -77,45 +76,52 @@ npm run preview
 │  └─ guide.vue                 # 使用教程（选组件 → 挑变体 → 复制提示词）
 ├─ server/
 │  ├─ api/
-│  │  ├─ categories.get.ts      # 分类列表（按 grp 分组 + 各分类组件数）
-│  │  └─ components.get.ts      # 组件列表（cat / q / tag 三个筛选参数）
+│  │  ├─ catalog.get.ts         # 构建期读取 catalog.json，把数据写进页面 payload
+│  │  ├─ categories.get.ts      # 分类列表（SSR 模式备用）
+│  │  └─ components.get.ts      # 组件列表（SSR 模式备用）
 │  └─ database/
-│     ├─ index.ts               # SQLite 初始化、建表、种子装载
-│     └─ seed-snapshot.json     # 全量数据快照（28 分类 / 700+ 组件）
-├─ data/ui.db                   # 运行时生成，不提交
+│     ├─ index.ts               # SQLite 初始化、建表、种子装载（SSR 模式备用）
+│     └─ seed-snapshot.json     # 全量数据快照（28 分类 / 700+ 组件），唯一数据源
 ├─ home.png / modal.png         # README 截图
 └─ LICENSE                      # MIT
 ```
 
-## 数据模型与 API
+## 数据模型与筛选
 
-`components` 表：
+数据源只有一个文件：`server/database/seed-snapshot.json`。
 
 | 字段 | 类型 | 说明 |
 | --- | --- | --- |
-| `category_slug` | TEXT | 所属分类，对应 `categories.slug` |
-| `name` | TEXT | 变体名称，如「Linear 风格顶部导航」 |
-| `description` | TEXT | 一句话说明 |
-| `tags` | TEXT | JSON 数组字符串，风格/形态标签，如 `["桌面端","Linear","极简"]` |
-| `preview_html` | TEXT | 预览用的 HTML 片段，由页面 `v-html` 渲染 |
-| `prompt` | TEXT | 可直接复制的 AI 提示词 |
-| `sort` | INTEGER | 同分类内排序 |
+| `cat` | string | 所属分类，对应 `categories.slug` |
+| `name` | string | 变体名称，如「Linear 风格顶部导航」 |
+| `desc` | string | 一句话说明 |
+| `tags` | string | JSON 数组字符串，风格/形态标签，如 `["桌面端","Linear","极简"]` |
+| `preview` | string | 预览用的 HTML 片段，由页面 `v-html` 渲染 |
+| `prompt` | string | 可直接复制的 AI 提示词 |
+| `sort` | number | 同分类内排序 |
 
-接口：
+构建时 `scripts/make-catalog.mjs` 把它整理成 `public/catalog.json`：
 
-| 方法 | 路径 | 参数 | 返回 |
-| --- | --- | --- | --- |
-| GET | `/api/categories` | — | 按 `grp` 分组后的分类数组，含每类组件数 `count` |
-| GET | `/api/components` | `cat`（默认 `nav`）、`q`（关键词）、`tag`（风格标签） | 组件数组，`tags` 已解析为字符串数组 |
+```json
+{
+  "groups":     { "导航与结构": [ { "slug": "nav", "name": "导航菜单", "count": 37 } ] },
+  "components": [ { "category_slug": "nav", "name": "…", "tags": ["桌面端"], "preview": "<div>…", "prompt": "…" } ]
+}
+```
 
-`q` 会同时匹配 `name`、`description`、`prompt`；`tag` 用 `tags LIKE '%"标签"%'` 做匹配，数据量在当前规模下够用。
+页面用一次 `useAsyncData('catalog')` 把整份数据读进来（构建期走 `/api/catalog` 写进 payload，运行时走 `/catalog.json`），之后分类切换、关键词搜索、标签筛选全部在浏览器本地完成：
+
+- `q` 同时匹配 `name`、`description`、`prompt`（小写包含）；
+- `tag` 精确匹配 `tags` 数组元素；
+- 视图状态仍在 URL 里：`?cat=nav&tag=Linear&q=侧边栏`。
 
 ### 新增一个组件变体
 
-- **临时试用**：直接往 `data/ui.db` 的 `components` 表插一行，刷新页面即可看到（`sort` 决定位置）。
-- **准备提交**：同时改 `server/database/seed-snapshot.json`，让别人克隆后拿到同样的数据。
+1. 在 `server/database/seed-snapshot.json` 里加一条（`sort` 决定位置）；
+2. `npm run generate` 重新生成静态站（`catalog.json` 会自动更新）；
+3. 按 [docs/DEPLOY.md](./docs/DEPLOY.md) 第 7 节发版。
 
-> 注意：快照只在 `categories` 表为空时装载。库已经存在时改快照不会生效，需要删除 `data/ui.db` 重建，或手动导入。
+静态站没有写入接口，内容改动都要走「改快照 → 重新构建 → 发版」这条路。
 
 ### 提示词写法约定
 

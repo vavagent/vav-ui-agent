@@ -14,6 +14,9 @@ data/*.db-shm
 data/*.db-wal
 .data/
 
+# 构建期生成的静态数据（由 scripts/make-catalog.mjs 从 seed-snapshot.json 产出）
+public/catalog.json
+
 # 备份与临时文件
 *.bak
 *.log

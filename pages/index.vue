@@ -32,30 +32,32 @@ function pickStyle(s) {
   showStyleModal.value = false
 }
 
-/* SSR 拉分类 */
-const { data: catGroups } = await useFetch('/api/categories')
-
-/* SSR 拉当前分类的全部组件（用于标签列表，不受筛选影响） */
-const { data: allComps } = await useFetch(
-  '/api/components',
-  {
-    query: computed(() => ({ cat: currentCat.value })),
-    watch: [currentCat]
-  }
+/* 构建期导出的静态数据（SSG）：构建时走 API 取数并写进 payload，线上从静态 JSON 读 */
+const { data: catalog } = await useAsyncData('catalog', () =>
+  $fetch(import.meta.server ? '/api/catalog' : '/catalog.json')
 )
 
-/* SSR 拉当前分类的组件（带筛选） */
-const { data: comps, pending } = await useFetch(
-  '/api/components',
-  {
-    query: computed(() => ({
-      cat: currentCat.value,
-      q: searchQ.value,
-      tag: activeTag.value
-    })),
-    watch: [currentCat, searchQ, activeTag]
-  }
+const catGroups = computed(() => (catalog.value && catalog.value.groups) || {})
+const catalogComps = computed(() => (catalog.value && catalog.value.components) || [])
+
+/* 当前分类的全部组件（用于标签列表，不受筛选影响） */
+const allComps = computed(() =>
+  catalogComps.value
+    .filter(c => c.category_slug === currentCat.value)
+    .sort((a, b) => a.sort - b.sort)
 )
+
+/* 当前分类 + 搜索词 + 风格标签，本地过滤 */
+const comps = computed(() => {
+  const q = searchQ.value.trim().toLowerCase()
+  const tag = activeTag.value.trim()
+  return allComps.value.filter((c) => {
+    if (tag && !(c.tags || []).includes(tag)) return false
+    if (!q) return true
+    return [c.name, c.description, c.prompt].some(v => String(v || '').toLowerCase().includes(q))
+  })
+})
+const pending = ref(false)
 
 /* 当前分类的元信息 */
 const currentCatMeta = computed(() => {
