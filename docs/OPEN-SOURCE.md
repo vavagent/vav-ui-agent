@@ -12,7 +12,7 @@
 | 创建 GitHub 远程仓库 | ✅ [vavagent/vav-ui-agent](https://github.com/vavagent/vav-ui-agent)（Public） |
 | 首次推送 + About / Topics 设置 | ✅ 已完成（`main` 分支，9 个 topics，SSH 部署密钥） |
 | CI 构建检查 | ✅ 已通过（`.github/workflows/ci.yml`：`npm ci` + `npm run build`） |
-| 打 tag / 发布 Release | ⏳ 建议下一个动作（见第 6 节） |
+| 打 tag / 发布 Release | ✅ `v0.1.0` 已发布（标记 Latest） |
 
 ## 1. 开源前自检清单
 
