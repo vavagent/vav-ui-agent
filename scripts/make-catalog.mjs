@@ -141,7 +141,7 @@ writeFileSync(resolve(outDir, 'search.json'), JSON.stringify(index), 'utf8')
 const mdLines = [
   '# VAV UI-agent 组件视觉与提示词素材库',
   '',
-  `> ${rows.length} 个组件变体 / ${Object.keys(counts).length} 个分类，按组件类型分组；每个变体都有页面链接、风格标签和三种粒度的提示词。`,
+  `> ${rows.length} 个组件变体 / ${counts.size} 个分类，按组件类型分组；每个变体都有页面链接、风格标签和三种粒度的提示词。`,
   '> 单变体 Markdown：把 `/api/v/<slug>.md` 直接丢给 AI 即可。',
   ''
 ]
