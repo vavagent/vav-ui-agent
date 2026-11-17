@@ -1,0 +1,53 @@
+# antd Tabs
+
+- 分类：标签页 Tabs（tabs）
+- 分组：导航与结构
+- 风格标签：桌面端、Tabs、antd、iOS、shadcn、Linear、微信、Awwwards、Neumorphism、新拟态、3D立体、新粗野主义、极简、便当盒布局、暗黑模式
+- 页面：https://ui.vavagent.com/v/tabs-001/
+
+## 设计说明
+
+设计 antd 风格 Tabs：
+- 标签栏底部 1px #e8e8e8 分割线
+- 当前标签：蓝色 #1677ff 文字 + 底部 2px 蓝色下划线
+- 其他标签：灰色文字 rgba(0,0,0,.65)
+- 标签间距 24px，padding 8px 0
+- 内容区 padding 20px
+- 整体风格：Ant Design Tabs 下划线式
+
+## 一句话描述
+
+antd Tabs：下划线式标签页。 风格 桌面端 / Tabs / antd / iOS
+
+## 改造现有页面用的提示词
+
+```text
+把现有页面里的「antd Tabs」改成这个观感，只改样式，不重写。
+
+技术栈：按我项目现有的（Vue / Quasar 或 React / Tailwind 均可），不要升级版本，不要引入新依赖。
+
+参照描述：
+设计 antd 风格 Tabs：
+- 标签栏底部 1px #e8e8e8 分割线
+- 当前标签：蓝色 #1677ff 文字 + 底部 2px 蓝色下划线
+- 其他标签：灰色文字 rgba(0,0,0,.65)
+- 标签间距 24px，padding 8px 0
+- 内容区 padding 20px
+- 整体风格：Ant Design Tabs 下划线式
+
+约束：
+1. props 名称、数据字段、组件层级一律不动，只调整布局 / 间距 / 字号 / 颜色 / 圆角 / 阴影
+2. 需要动效时用项目已有能力降级实现，不新增动画库
+3. 先给 2-3 个方向（每个方向改了什么、风险在哪），我确认后再出代码
+4. 出代码时给完整单文件版本，不要给 diff
+验收：功能不变，构建能过。风格关键词：桌面端 / Tabs / antd / iOS / shadcn / Linear
+```
+
+## 同分类其他变体
+
+- 卡片式 Tabs（/v/tabs-002/）
+- iOS 底部 Tab（/v/tabs-003/）
+- 垂直 Tabs（/v/tabs-004/）
+- 顶部下划线 Tabs（/v/tabs-005/）
+- 卡片式 Tabs（/v/tabs-006/）
+- 侧边 Tabs（/v/tabs-007/）

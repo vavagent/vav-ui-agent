@@ -22,6 +22,9 @@
 
 ## 功能
 
+- **每个变体都有详情页**：`/v/card-001/` 这类独立页面，预览可切 375 / 768 / 自适应三档宽度，先把手机宽度的问题暴露出来再决定用不用
+- **三种粒度的提示词**：改造模板（改现有页面，只动样式不动结构，要求 AI 先给 2-3 个方向）／原始设计说明（从零做）／一句话（快速试）
+- **给 AI 直接读的出口**：`/catalog.md`（全库目录）、`/api/v/<slug>.md`（单变体 Markdown，丢链接给 AI 就会读）、`/search.json`（约 175KB 的精简索引）
 - **700+ 个变体 / 28 个分类**，分四大组：导航与结构、基础控件、反馈与弹层、数据展示
 - **风格筛选**：70+ 风格标签，按国外设计体系（antd / iOS / Material / Tailwind / shadcn…）、产品风格（Linear / Vercel / Stripe / Notion / 小红书 / 飞书 / 淘宝…）、视觉风格（极简 / 玻璃拟态 / 赛博朋克 / 新粗野主义…）、潮流风格（3D 立体 / 黏土 / 故障风…）四组收纳
 - **关键词搜索**：同时匹配组件名、描述和提示词正文
@@ -77,12 +80,14 @@ npx serve .output/public -l 3210
 ├─ assets/css/main.css          # CSS 变量与基础样式
 ├─ pages/
 │  ├─ index.vue                 # 素材库主界面：分类侧栏 / 搜索 / 标签筛选 / 预览 / 复制
+│  ├─ v/[slug].vue              # 变体详情页：响应式预览（375/768/自适应）+ 三种粒度提示词
 │  ├─ filter.vue                # 电商风格筛选面板的独立示例
-│  ├─ stats.vue                 # 数据看板（今日 PV/UV、热门分类、复制榜、搜索词）
+│  ├─ stats.vue                 # 数据看板（今日 PV/UV、热门分类、浏览/复制榜、搜索词）
 │  └─ guide.vue                 # 使用教程（选组件 → 挑变体 → 复制提示词）
 ├─ server/
 │  ├─ api/
 │  │  ├─ catalog.get.ts         # 构建期读取 catalog.json，把数据写进页面 payload
+│  │  ├─ variant.get.ts         # 构建期读取单个变体 JSON（详情页预渲染用）
 │  │  ├─ categories.get.ts      # 分类列表（SSR 模式备用）
 │  │  └─ components.get.ts      # 组件列表（SSR 模式备用）
 │  └─ database/
@@ -106,14 +111,16 @@ npx serve .output/public -l 3210
 | `prompt` | string | 可直接复制的 AI 提示词 |
 | `sort` | number | 同分类内排序 |
 
-构建时 `scripts/make-catalog.mjs` 把它整理成 `public/catalog.json`：
+构建时 `scripts/make-catalog.mjs` 把它整理成四类产物：
 
-```json
-{
-  "groups":     { "导航与结构": [ { "slug": "nav", "name": "导航菜单", "count": 37 } ] },
-  "components": [ { "category_slug": "nav", "name": "…", "tags": ["桌面端"], "preview": "<div>…", "prompt": "…" } ]
-}
-```
+| 产物 | 内容 | 用途 |
+| --- | --- | --- |
+| `public/catalog.json` | `groups` + `components`（含 `slug`、`prompt`、`prompt_short`、`preview_html`） | 首页一次加载、本地筛选 |
+| `public/search.json` | 分类 + 变体的 slug / 名称 / 标签 / 一句话（约 175KB） | 给 AI 或脚本按需检索，不用拉全量 |
+| `public/catalog.md` | 全库目录的 Markdown 版 | AI 一次读完就知道有什么 |
+| `public/api/v/<slug>.json`、`.md` | 单个变体完整数据与 Markdown 版 | 详情页按需取；Markdown 直接丢给 AI |
+
+`slug` 规则：分类内按 `sort` 编号，形如 `card-001`、`nav-037`，稳定、可分享、可被 AI 引用。
 
 页面用一次 `useAsyncData('catalog')` 把整份数据读进来（构建期走 `/api/catalog` 写进 payload，运行时走 `/catalog.json`），之后分类切换、关键词搜索、标签筛选全部在浏览器本地完成：
 
@@ -124,10 +131,28 @@ npx serve .output/public -l 3210
 ### 新增一个组件变体
 
 1. 在 `server/database/seed-snapshot.json` 里加一条（`sort` 决定位置）；
-2. `npm run generate` 重新生成静态站（`catalog.json` 会自动更新）；
+2. `npm run generate` 重新生成静态站（`catalog.json` / `search.json` / `catalog.md` / 详情页都会自动更新）；
 3. 按 [docs/DEPLOY.md](./docs/DEPLOY.md) 第 7 节发版。
 
 静态站没有写入接口，内容改动都要走「改快照 → 重新构建 → 发版」这条路。
+
+## 给 AI 直接读
+
+参照 21st.dev 那种「把链接丢给 AI，它自己读完再动手」的用法，本站每个变体都有纯 Markdown 出口：
+
+```text
+https://ui.vavagent.com/catalog.md              全库目录（28 分类 / 702 变体）
+https://ui.vavagent.com/api/v/card-001.md       单个变体：设计说明 + 一句话 + 改造模板
+https://ui.vavagent.com/search.json             精简索引，脚本/agent 按标签筛
+```
+
+Markdown 由 nginx 以 `text/markdown` 返回，可以直接作为工具结果喂给模型。配合「改造模板」使用，典型流程是：
+
+1. 让 AI 读 `catalog.md` 或 `search.json`，按「我要做定价页 / Linear 风格」筛出 2-3 个候选；
+2. 你确认后，让它读那一个的 `/api/v/<slug>.md`；
+3. 用里面的「改造模板」约束它：只改样式、不动数据结构、先给方向再出代码。
+
+> MCP server（本地 stdio）还在路线图上，用来把这个流程收成一条命令。
 
 ### 提示词写法约定
 

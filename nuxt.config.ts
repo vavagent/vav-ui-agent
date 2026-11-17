@@ -1,3 +1,9 @@
+import { readFileSync } from 'node:fs'
+
+// 变体详情页在构建期逐个预渲染，路由列表来自 make-catalog 的产物
+const catalog = JSON.parse(readFileSync('public/catalog.json', 'utf8'))
+const variantRoutes = (catalog.components || []).map((c: { slug: string }) => `/v/${c.slug}`)
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
   ssr: true,
@@ -24,10 +30,10 @@ export default defineNuxtConfig({
   },
   nitro: {
     storage: {},
-    // SSG：构建期把三个页面预渲染成静态 HTML，数据由 public/catalog.json 提供
+    // SSG：构建期把页面预渲染成静态 HTML（内容页 + 702 个变体详情页）
     prerender: {
-      routes: ['/', '/guide', '/filter', '/stats'],
-      crawlLinks: true
+      routes: ['/', '/guide', '/filter', '/stats', ...variantRoutes],
+      crawlLinks: false
     }
   }
 })

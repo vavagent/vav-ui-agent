@@ -225,10 +225,11 @@ async function copy(c, ev) {
           <div class="variant-head">
             <h3>{{ c.name }}</h3>
             <div class="meta">
-              <span v-for="t in c.tags" :key="t" class="mini-tag">{{ t }}</span>
+              <span v-for="t in c.tags.slice(0, 6)" :key="t" class="mini-tag">{{ t }}</span>
+              <NuxtLink class="detail-link" :to="`/v/${c.slug}/`">详情与响应式预览 →</NuxtLink>
             </div>
           </div>
-          <div class="preview">
+          <div class="preview" @click="router.push(`/v/${c.slug}/`)">
             <div class="stage" v-html="c.preview_html"></div>
           </div>
           <div class="prompt">
@@ -350,7 +351,9 @@ async function copy(c, ev) {
 .variant-head h3{margin:0;font-size:16px;font-weight:600}
 .variant-head .meta{display:flex;gap:6px;flex-wrap:wrap}
 .mini-tag{font-size:11px;padding:2px 8px;border-radius:4px;background:var(--bg);color:var(--text-3)}
-.preview{background:linear-gradient(45deg,#fafafa 25%,transparent 25%),linear-gradient(-45deg,#fafafa 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#fafafa 75%),linear-gradient(-45deg,transparent 75%,#fafafa 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;background-color:#fff;padding:24px;min-height:120px;display:flex;align-items:center}
+.detail-link{font-size:12px;color:var(--accent);text-decoration:none;padding:2px 8px;border:1px solid var(--border);border-radius:4px;white-space:nowrap}
+.detail-link:hover{background:#f2f5ff;border-color:var(--accent)}
+.preview{background:linear-gradient(45deg,#fafafa 25%,transparent 25%),linear-gradient(-45deg,#fafafa 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#fafafa 75%),linear-gradient(-45deg,transparent 75%,#fafafa 75%);background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0;background-color:#fff;padding:24px;min-height:120px;display:flex;align-items:center;cursor:pointer}
 .stage{width:100%;background:#fff;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
 
 .prompt{padding:16px 20px;background:var(--panel-2);border-top:1px solid var(--border)}

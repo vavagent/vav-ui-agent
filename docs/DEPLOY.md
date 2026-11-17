@@ -144,6 +144,29 @@ ssh root@47.104.100.227 "mkdir -p /clouddream/nginx-proxy-manage/data/static/ui/
 - 旧的 `data/ui.db` 只留在 `/opt/vavagent-ui` 作为 SSR 回退用，静态站不读它。
 - 如果将来要在页面上编辑内容，需要恢复 SSR（或加一层写入 API 后再重建静态站）。
 
+### 8.1 构建产物清单
+
+| 产物 | 说明 |
+| --- | --- |
+| `public/catalog.json` | 首页全量数据（约 727KB），含 `slug` / `prompt` / `prompt_short` / `preview_html` |
+| `public/search.json` | 精简索引（约 175KB），给 AI 或脚本按标签/关键词筛 |
+| `public/catalog.md` | 全库目录 Markdown |
+| `public/api/v/<slug>.json` | 单变体完整数据（含 `prompt_refactor`、`related`） |
+| `public/api/v/<slug>.md` | 单变体 Markdown，直接丢给 AI 即可 |
+| `.output/public/v/<slug>/index.html` | 702 个详情页，构建期逐个预渲染（`nuxt.config.ts` 从 catalog.json 生成路由） |
+
+详情页取数走双路径：构建期 `/api/variant?slug=...`（`server/api/variant.get.ts` 读本地文件），运行时 `/api/v/<slug>.json`。
+
+nginx 侧新增一条规则，保证 Markdown 的 MIME 正确，否则部分 agent 会把它当二进制：
+
+```nginx
+location ~* \.md$ {
+    default_type text/markdown;
+}
+```
+
+（已写入 `http.conf`，备份 `http.conf.bak.ui-md-20261117`。）
+
 ## 9. 访问统计（自带埋点，无第三方）
 
 链路：前端 `track()` → `GET /collect.gif?ev=...` → nginx 写日志 → 服务器 cron 汇总 → `/stats.json` → `/stats` 看板。
