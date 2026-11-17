@@ -132,6 +132,7 @@ const index = {
     catName: catMeta[v.category_slug]?.name || v.category_slug,
     tags: v.tags,
     desc: clip(v.description, 60),
+    gist: v.prompt_short,
     url: `/v/${v.slug}/`
   }))
 }

@@ -75,6 +75,9 @@ npx serve .output/public -l 3210
 │  ├─ make-favicon.py           # 生成 favicon / PWA 图标
 │  ├─ stats-aggregate.py        # nginx 埋点日志 → stats.json（服务器 cron 每 5 分钟）
 │  └─ deploy.py                 # 本地生成静态站 → 上传服务器 → 切软链接 → 探活
+├─ mcp/
+│  ├─ server.mjs                # 零依赖 stdio MCP server（search / get_inspiration / get_variant …）
+│  └─ README.md                 # 各编辑器配置与用法
 ├─ composables/useTrack.ts      # 埋点上报（/collect.gif）
 ├─ plugins/track.client.ts      # PV 采集
 ├─ assets/css/main.css          # CSS 变量与基础样式
@@ -152,7 +155,24 @@ Markdown 由 nginx 以 `text/markdown` 返回，可以直接作为工具结果�
 2. 你确认后，让它读那一个的 `/api/v/<slug>.md`；
 3. 用里面的「改造模板」约束它：只改样式、不动数据结构、先给方向再出代码。
 
-> MCP server（本地 stdio）还在路线图上，用来把这个流程收成一条命令。
+> MCP server（本地 stdio，零依赖）已经做好了：见 [mcp/README.md](./mcp/README.md)，配完之后在 Cursor / Claude Code 里可以「先搜候选 → 你确认 → 取改造模板」。
+
+## 在编辑器里用（MCP）
+
+`mcp/server.mjs` 是一个零依赖的 stdio MCP server，提供 5 个工具：`search`、`get_inspiration`、`get_variant`、`get_catalog`、`list_categories`。
+
+```json
+{
+  "mcpServers": {
+    "vav-ui-agent": {
+      "command": "node",
+      "args": ["D:/www/vavagent/vavagent_ui/mcp/server.mjs"]
+    }
+  }
+}
+```
+
+默认走线上 `https://ui.vavagent.com`（带 10 分钟磁盘缓存）；加 `"env": { "VAV_UI_LOCAL_DIR": "<仓库>/public" }` 则读本地产物，不联网。完整配置（Cursor / Claude Code / VS Code）和用法见 [mcp/README.md](./mcp/README.md)。
 
 ### 提示词写法约定
 
